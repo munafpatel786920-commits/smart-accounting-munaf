@@ -1,0 +1,8 @@
+{
+  "name": "Smart Accounting System",
+  "description": "A full-featured accounting management web app with comprehensive order processing, Rejection In/Out vouchers, AI-powered financial insights, and real-time GST reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

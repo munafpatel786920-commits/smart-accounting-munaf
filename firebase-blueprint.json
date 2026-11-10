@@ -1,0 +1,158 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and role information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "staff"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Ledger": {
+      "title": "Ledger",
+      "description": "Accounting ledger accounts",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "group": { "type": "string", "enum": ["Assets", "Liabilities", "Income", "Expenses"] },
+        "openingBalance": { "type": "number" },
+        "currentBalance": { "type": "number" },
+        "gstNumber": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "group"]
+    },
+    "Voucher": {
+      "title": "Voucher",
+      "description": "Accounting transactions",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["Sales", "Purchase", "Payment", "Receipt", "Journal"] },
+        "date": { "type": "string", "format": "date" },
+        "voucherNumber": { "type": "string" },
+        "ledgerId": { "type": "string" },
+        "amount": { "type": "number" },
+        "gstRate": { "type": "number" },
+        "cgst": { "type": "number" },
+        "sgst": { "type": "number" },
+        "igst": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "narration": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": { "type": "string" },
+              "quantity": { "type": "number" },
+              "rate": { "type": "number" },
+              "amount": { "type": "number" }
+            }
+          }
+        },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "date", "ledgerId", "amount"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Inventory items",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "sku": { "type": "string" },
+        "unit": { "type": "string" },
+        "stockQuantity": { "type": "number" },
+        "purchasePrice": { "type": "number" },
+        "salesPrice": { "type": "number" },
+        "gstRate": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "stockQuantity"]
+    },
+    "Company": {
+      "title": "Company",
+      "description": "Company profile settings",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "gstNumber": { "type": "string" },
+        "logoUrl": { "type": "string" }
+      },
+      "required": ["name"]
+    },
+    "Employee": {
+      "title": "Employee",
+      "description": "Payroll Employee Details",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "designation": { "type": "string" },
+        "department": { "type": "string" },
+        "dateOfJoining": { "type": "string" },
+        "basicPay": { "type": "number" },
+        "bankName": { "type": "string" },
+        "bankAccount": { "type": "string" },
+        "pfNumber": { "type": "string" },
+        "companyId": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["name", "employeeId", "basicPay", "companyId"]
+    },
+    "PayRun": {
+      "title": "PayRun",
+      "description": "Monthly Payroll calculations and voucher log",
+      "type": "object",
+      "properties": {
+        "month": { "type": "string" },
+        "notes": { "type": "string" },
+        "companyId": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "records": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      },
+      "required": ["month", "companyId", "records"]
+    },
+    "PayHead": {
+      "title": "PayHead",
+      "description": "Custom salary/payroll heads",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "calculationType": { "type": "string" },
+        "defaultValue": { "type": "number" },
+        "companyId": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["name", "type", "companyId"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": { "schema": "User", "description": "User profiles" },
+    "/ledgers/{ledgerId}": { "schema": "Ledger", "description": "Accounting ledgers" },
+    "/vouchers/{voucherId}": { "schema": "Voucher", "description": "Accounting transactions" },
+    "/products/{productId}": { "schema": "Product", "description": "Inventory items" },
+    "/company/profile": { "schema": "Company", "description": "Company settings" },
+    "/employees/{id}": { "schema": "Employee", "description": "Employee database" },
+    "/payruns/{id}": { "schema": "PayRun", "description": "Payroll log database" },
+    "/payheads/{id}": { "schema": "PayHead", "description": "Custom salary pay heads" }
+  }
+}
