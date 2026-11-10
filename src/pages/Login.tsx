@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '../firebase';
-import { doc, getDoc, getDocFromServer, setDoc } from 'firebase/firestore';
+import { doc, getDoc, getDocFromServer, setDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { authService, isElectronEnvironment } from '../services/dataService';
 import { useTranslation } from 'react-i18next';
 import { LogIn, Mail, Lock, Shield, BarChart3, FileSpreadsheet, Sparkles, CheckCircle2, HardDrive, Cloud } from 'lucide-react';
@@ -37,36 +37,70 @@ export default function Login() {
       const firebaseUser = userCredential.user;
 
       // Force check on server to bypass client-side cache for deleted/suspended users
-      let userDoc;
+      let userDocData: any = null;
+      let userDocExists = false;
+
       try {
-        userDoc = await getDocFromServer(doc(db, 'users', firebaseUser.uid));
+        const docSnap = await getDocFromServer(doc(db, 'users', firebaseUser.uid));
+        if (docSnap.exists()) {
+          userDocExists = true;
+          userDocData = docSnap.data();
+        }
       } catch (serverErr) {
         console.warn('Fallback to local document get:', serverErr);
-        userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-      }
-      
-      if (!userDoc.exists()) {
-        const newUserProfile = {
-          uid: firebaseUser.uid,
-          email: cleanEmail,
-          displayName: firebaseUser.displayName || (cleanEmail === 'patelmunaf90@gmail.com' ? 'Super Admin' : cleanEmail.split('@')[0]),
-          role: 'admin',
-          suspended: false,
-          createdAt: new Date().toISOString()
-        };
-        try {
-          await setDoc(doc(db, 'users', firebaseUser.uid), newUserProfile, { merge: true });
-        } catch (e) {
-          console.warn('Could not save user profile doc:', e);
+        const docSnap = await getDoc(doc(db, 'users', firebaseUser.uid));
+        if (docSnap.exists()) {
+          userDocExists = true;
+          userDocData = docSnap.data();
         }
-      } else {
-        const docData = userDoc.data();
-        if (docData && docData.suspended && cleanEmail !== 'patelmunaf90@gmail.com') {
+      }
+
+      // Fallback check by email if doc by UID wasn't found
+      if (!userDocExists && cleanEmail !== 'patelmunaf90@gmail.com') {
+        try {
+          const q = query(collection(db, 'users'), where('email', '==', cleanEmail));
+          const qSnap = await getDocs(q);
+          if (!qSnap.empty) {
+            userDocExists = true;
+            userDocData = qSnap.docs[0].data();
+          }
+        } catch (e) {
+          console.warn('Error querying user doc by email:', e);
+        }
+      }
+
+      if (cleanEmail !== 'patelmunaf90@gmail.com') {
+        if (!userDocExists || !userDocData) {
           await auth.signOut();
-          setError('Your account is suspended. Please contact patelmunaf90@gmail.com for support.');
-          toast.error('Your account is suspended. Please contact patelmunaf90@gmail.com for support.');
+          setError('Access Denied: Your account has been deleted or not authorized by Super Admin.');
+          toast.error('Access Denied: Your account has been deleted or not authorized.');
           setLoading(false);
           return;
+        }
+
+        if (userDocData.suspended || userDocData.accessRevoked) {
+          await auth.signOut();
+          setError('Access Denied: Your account is suspended or access has been revoked.');
+          toast.error('Access Denied: Your account is suspended or access has been revoked.');
+          setLoading(false);
+          return;
+        }
+      } else {
+        // Super Admin self profile check / creation
+        if (!userDocExists) {
+          const newUserProfile = {
+            uid: firebaseUser.uid,
+            email: cleanEmail,
+            displayName: firebaseUser.displayName || 'Super Admin',
+            role: 'admin',
+            suspended: false,
+            createdAt: new Date().toISOString()
+          };
+          try {
+            await setDoc(doc(db, 'users', firebaseUser.uid), newUserProfile, { merge: true });
+          } catch (e) {
+            console.warn('Could not save super admin profile doc:', e);
+          }
         }
       }
 
@@ -84,37 +118,7 @@ export default function Login() {
     }
   };
 
-  const handleSuperAdminQuickLogin = async () => {
-    setEmail('patelmunaf90@gmail.com');
-    setPassword('munaf786');
-    setLoading(true);
-    try {
-      await signInWithEmailAndPassword(auth, 'patelmunaf90@gmail.com', 'munaf786');
-      toast.success('Signed in as Super Admin successfully!');
-    } catch (err: any) {
-      toast.error('Sign in failed: ' + err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const handleSuperAdminFill = () => {
-    setEmail('patelmunaf90@gmail.com');
-    setPassword('munaf786');
-    toast.info('Super Admin credentials filled. Click Login to access Super Admin Panel.');
-  };
-
-  const handleOfflineQuickLogin = async () => {
-    setLoading(true);
-    try {
-      await authService.signInLocal('admin@smartaccounting.local', 'admin');
-      toast.success('Signed in with Offline Administrator Account');
-    } catch (err: any) {
-      toast.error('Failed to sign in: ' + err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#002f3c] p-4 font-mono select-none relative">
@@ -280,26 +284,7 @@ export default function Login() {
             </button>
           </form>
 
-          {/* Super Admin & Quick Login options */}
-          <div className="mt-4 pt-3 border-t border-slate-200 space-y-2 text-center">
-            <button
-              type="button"
-              onClick={handleSuperAdminQuickLogin}
-              className="w-full text-xs font-bold text-[#002f3c] bg-[#ffcb2b] hover:bg-[#ffd54f] border border-[#002f3c]/30 py-2 px-3 flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer"
-            >
-              <Shield size={14} className="text-[#004d5a]" />
-              <span>⚡ 1-Click Super Admin Login (patelmunaf90@gmail.com)</span>
-            </button>
 
-            <button
-              type="button"
-              onClick={handleOfflineQuickLogin}
-              className="text-[11px] font-bold text-[#146e85] hover:underline flex items-center justify-center gap-1.5 mx-auto"
-            >
-              <HardDrive size={12} />
-              <span>Continue with Offline Local Administrator</span>
-            </button>
-          </div>
         </div>
 
       </div>

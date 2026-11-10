@@ -134,11 +134,11 @@ export default function SuperAdminPanel({ user, onSwitchToAccounting }: SuperAdm
         email: newEmail.toLowerCase().trim(),
         displayName: newDisplayName.trim(),
         role: newRole,
-        suspended: false,
+        suspended: true,
         createdAt: new Date().toISOString()
       });
 
-      toast.success(`Registered account successfully [${newEmail}]`);
+      toast.success(`Registered account [${newEmail}] with No Access (Suspended). Click Activate to grant access.`);
       
       // Reset registration form
       setNewEmail('');
@@ -221,11 +221,11 @@ export default function SuperAdminPanel({ user, onSwitchToAccounting }: SuperAdm
           email: targetEmail.toLowerCase(),
           displayName: targetDisplayName,
           role: targetRole,
-          suspended: false,
+          suspended: true,
           createdAt: new Date().toISOString()
         });
 
-        toast.success(`Forced re-registration completed successfully for [${targetEmail}]`, { id: toastId });
+        toast.success(`Forced re-registration completed for [${targetEmail}] with No Access (Suspended).`, { id: toastId });
         
         // Reset state
         setNewEmail('');

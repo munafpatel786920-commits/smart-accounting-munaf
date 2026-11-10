@@ -25,7 +25,8 @@ import {
   X,
   Wifi,
   WifiOff,
-  Globe
+  Globe,
+  ShieldCheck
 } from 'lucide-react';
 import { useCompany } from '../contexts/CompanyContext';
 import { User } from '../types';
@@ -37,9 +38,10 @@ import ShortcutsHelp from './ShortcutsHelp';
 
 interface LayoutProps {
   user: User;
+  onReturnToSuperAdmin?: () => void;
 }
 
-export default function Layout({ user }: LayoutProps) {
+export default function Layout({ user, onReturnToSuperAdmin }: LayoutProps) {
   const { t, i18n } = useTranslation();
   const { activeCompany, companies, setActiveCompany, isOfflineMode } = useCompany();
   const location = useLocation();
@@ -479,6 +481,17 @@ export default function Layout({ user }: LayoutProps) {
                 <option value="gu">ગુજરાતી</option>
               </select>
             </div>
+
+            {onReturnToSuperAdmin && (
+              <button
+                onClick={onReturnToSuperAdmin}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#002f3c] hover:bg-[#004d5a] text-[#ffcb2b] text-xs font-bold border border-[#ffcb2b]/30 shadow-xs transition-colors cursor-pointer"
+                title="Return to Super Admin Control Center"
+              >
+                <ShieldCheck size={14} />
+                <span className="hidden sm:inline">Super Admin Panel</span>
+              </button>
+            )}
 
             {/* Network / Offline Status Badge */}
             <div 

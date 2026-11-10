@@ -18,6 +18,7 @@ import Settings from './pages/Settings';
 import CompanyManagement from './pages/CompanyManagement';
 import Payroll from './pages/Payroll';
 import Login from './pages/Login';
+import SuperAdminPanel from './components/SuperAdminPanel';
 import { CompanyProvider, useCompany } from './contexts/CompanyContext';
 import { dataService, authService, isElectronEnvironment } from './services/dataService';
 import { toast, Toaster } from 'sonner';
@@ -28,6 +29,7 @@ function AppContent() {
   const [loading, setLoading] = useState(true);
   const { activeCompany } = useCompany();
   const isOffline = isElectronEnvironment();
+  const [viewingSuperAdminAccounting, setViewingSuperAdminAccounting] = useState(false);
 
   // Auth Listener with Real-Time User Profile Sync
   useEffect(() => {
@@ -65,9 +67,9 @@ function AppContent() {
           // Online Firebase check
           const userDoc = await dataService.getDocument<User>('users', uid);
 
-          if (userDoc && userDoc.suspended && authUser.email !== 'patelmunaf90@gmail.com') {
+          if (userDoc && (userDoc.suspended || (userDoc as any).accessRevoked) && authUser.email !== 'patelmunaf90@gmail.com') {
             console.log("User doc is marked suspended! Signing out immediately.");
-            toast.error('Your account is suspended. Please contact patelmunaf90@gmail.com for support.');
+            toast.error('Your account is suspended or access has been revoked.');
             setUser(null);
             await authService.signOut();
             setLoading(false);
@@ -75,11 +77,20 @@ function AppContent() {
           }
 
           if (!userDoc) {
+            if (authUser.email?.toLowerCase().trim() !== 'patelmunaf90@gmail.com') {
+              console.log("User doc does not exist and not super admin. Signing out.");
+              toast.error('Access Denied: Your account has not been authorized or approved by the Super Administrator.');
+              setUser(null);
+              await authService.signOut();
+              setLoading(false);
+              return;
+            }
+
             console.log("User doc does not exist yet. Auto-creating user profile for:", uid);
             const newUser: User = {
               uid: uid,
               email: authUser.email || 'user@smartaccounting.com',
-              displayName: authUser.displayName || (authUser.email === 'patelmunaf90@gmail.com' ? 'Super Admin' : (authUser.email?.split('@')[0] || 'Administrator')),
+              displayName: authUser.displayName || 'Super Admin',
               role: 'admin',
               suspended: false,
               createdAt: new Date().toISOString()
@@ -98,14 +109,18 @@ function AppContent() {
 
           unsubscribeUserDoc = dataService.onSnapshotDoc<User>('users', uid, async (docData) => {
             try {
-              if (docData) {
-                if (docData.suspended && docData.email !== 'patelmunaf90@gmail.com') {
-                  toast.error('Your account is suspended. Please contact patelmunaf90@gmail.com for support.');
+              if (authUser.email?.toLowerCase().trim() !== 'patelmunaf90@gmail.com') {
+                if (!docData || docData.suspended || (docData as any).accessRevoked) {
+                  console.log("User document deleted or suspended in real-time! Kicking out.");
+                  toast.error('Access Denied: Your account has been suspended or deleted by the Super Administrator.');
                   await authService.signOut();
                   setUser(null);
-                } else {
-                  setUser(docData);
+                  setLoading(false);
+                  return;
                 }
+              }
+              if (docData) {
+                setUser(docData);
               }
             } catch (err) {
               console.error("Error in user doc real-time snapshot listener:", err);
@@ -339,6 +354,17 @@ function AppContent() {
   const isElectronOrFile = isOffline || (typeof window !== 'undefined' && window.location.protocol === 'file:');
   const AppRouter = isElectronOrFile ? HashRouter : BrowserRouter;
 
+  const isSuperAdmin = user?.email?.toLowerCase().trim() === 'patelmunaf90@gmail.com';
+
+  if (user && isSuperAdmin && !viewingSuperAdminAccounting) {
+    return (
+      <SuperAdminPanel 
+        user={user} 
+        onSwitchToAccounting={() => setViewingSuperAdminAccounting(true)} 
+      />
+    );
+  }
+
   return (
     <AppRouter>
       <Routes>
@@ -347,7 +373,7 @@ function AppContent() {
           path="/"
           element={
             user ? (
-              <Layout user={user} />
+              <Layout user={user} onReturnToSuperAdmin={isSuperAdmin ? () => setViewingSuperAdminAccounting(false) : undefined} />
             ) : (
               <Navigate to="/login" />
             )
